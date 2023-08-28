@@ -1,0 +1,15 @@
+{
+  "name": "nocors",
+  "version": "1.0.0",
+  "description": "A Netlify function to bypass CORS.",
+  "main": "netlify/functions/cors-bypass.js",
+  "scripts": {
+    "test": "echo \"No tests\" && exit 0"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.5"
+  },
+  "author": "",
+  "license": "ISC"
+}
+
