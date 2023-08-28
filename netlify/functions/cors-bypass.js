@@ -3,11 +3,13 @@ const fetch = require('node-fetch');
 exports.handler = async function(event, context) {
     const { endpoint } = event.queryStringParameters;
 
-    // Check if endpoint is provided
     if (!endpoint) {
         return {
             statusCode: 400,
-            body: 'Endpoint parameter is required'
+            body: 'Endpoint parameter is required',
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            }
         };
     }
 
@@ -20,13 +22,16 @@ exports.handler = async function(event, context) {
             body: data,
             headers: {
                 'Content-Type': 'text/html',
+                'Access-Control-Allow-Origin': '*', // This allows any origin to access the function
             }
         };
     } catch (error) {
         return {
             statusCode: 500,
-            body: `Failed fetching data: ${error.message}`
+            body: `Failed fetching data: ${error.message}`,
+            headers: {
+                'Access-Control-Allow-Origin': '*', // This allows any origin to access the function
+            }
         };
     }
 };
-
