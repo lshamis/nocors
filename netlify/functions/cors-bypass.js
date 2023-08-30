@@ -1,45 +1,43 @@
-const fetch = require("node-fetch");
-const vm = require("vm");
+const { stream } = require("@netlify/functions");
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST" || !event.body) {
-    return {
-      statusCode: 400,
-      body: "Invalid request method or empty body",
-    };
+exports.handler = stream(async (event, context) => {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const { endpoint, postProcessCode } = JSON.parse(event.body);
+  const { endpoint, compress } = JSON.parse(event.body);
 
-  if (!endpoint) {
-    return {
-      statusCode: 400,
-      body: "No endpoint provided",
-    };
-  }
+  try {
+    const response = await fetch(endpoint);
 
-  const response = await fetch(endpoint);
-  const data = await response.text();
-
-  let result = data; // Default result
-
-  if (postProcessCode) {
-    const sandbox = { data };
-    const script = new vm.Script(`postProcess = ${postProcessCode}`);
-    script.runInNewContext(sandbox);
-
-    // Call the provided function with the fetched data
-    if (typeof sandbox.postProcess === "function") {
-      result = sandbox.postProcess(data);
+    if (compress) {
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Encoding": "gzip",
+          "Content-Type": "application/octet-stream",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: response.body.pipeThrough(new CompressionStream("gzip")),
+      };
+    } else {
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Type": "text/plain",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: response.body,
+      };
     }
+  } catch (error) {
+    console.error(`Failed to fetch data from ${endpoint}`, error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        message: "Failed to fetch data",
+        error: error.message,
+      }),
+    };
   }
-
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "text/plain",
-      "Access-Control-Allow-Origin": "*",
-    },
-    body: result,
-  };
-};
+});
