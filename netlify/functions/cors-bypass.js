@@ -1,37 +1,45 @@
-const fetch = require('node-fetch');
+const fetch = require("node-fetch");
+const vm = require("vm");
 
-exports.handler = async function(event, context) {
-    const { endpoint } = event.queryStringParameters;
+exports.handler = async (event) => {
+  if (event.httpMethod !== "POST" || !event.body) {
+    return {
+      statusCode: 400,
+      body: "Invalid request method or empty body",
+    };
+  }
 
-    if (!endpoint) {
-        return {
-            statusCode: 400,
-            body: 'Endpoint parameter is required',
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-            }
-        };
+  const { endpoint, postProcessCode } = JSON.parse(event.body);
+
+  if (!endpoint) {
+    return {
+      statusCode: 400,
+      body: "No endpoint provided",
+    };
+  }
+
+  const response = await fetch(endpoint);
+  const data = await response.text();
+
+  let result = data; // Default result
+
+  if (postProcessCode) {
+    const sandbox = { data };
+    const script = new vm.Script(`postProcess = ${postProcessCode}`);
+    script.runInNewContext(sandbox);
+
+    // Call the provided function with the fetched data
+    if (typeof sandbox.postProcess === "function") {
+      result = sandbox.postProcess(data);
     }
+  }
 
-    try {
-        const response = await fetch(endpoint);
-        const data = await response.text();
-        
-        return {
-            statusCode: 200,
-            body: data,
-            headers: {
-                'Content-Type': 'text/html',
-                'Access-Control-Allow-Origin': '*', // This allows any origin to access the function
-            }
-        };
-    } catch (error) {
-        return {
-            statusCode: 500,
-            body: `Failed fetching data: ${error.message}`,
-            headers: {
-                'Access-Control-Allow-Origin': '*', // This allows any origin to access the function
-            }
-        };
-    }
+  return {
+    statusCode: 200,
+    headers: {
+      "Content-Type": "text/plain",
+      "Access-Control-Allow-Origin": "*",
+    },
+    body: result,
+  };
 };
