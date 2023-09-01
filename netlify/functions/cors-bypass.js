@@ -5,10 +5,12 @@ exports.handler = stream(async (event, context) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const { endpoint, compress } = JSON.parse(event.body);
+  const { endpoint, headers, compress } = JSON.parse(event.body);
 
   try {
-    const response = await fetch(endpoint);
+    const response = await fetch(endpoint, {
+      headers: headers || {},
+    });
 
     if (compress) {
       return {
